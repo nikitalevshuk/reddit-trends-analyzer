@@ -5,6 +5,7 @@ import { createTheme } from '@mui/material/styles';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const theme = createTheme({
@@ -21,6 +22,7 @@ const theme = createTheme({
 
 const queryClient = new QueryClient();
 
+// Защищенный роут для авторизованных пользователей
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
@@ -36,11 +38,12 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/" element={<Dashboard />} />
               <Route
-                path="/"
+                path="/profile"
                 element={
                   <PrivateRoute>
-                    <Dashboard />
+                    <Profile />
                   </PrivateRoute>
                 }
               />
