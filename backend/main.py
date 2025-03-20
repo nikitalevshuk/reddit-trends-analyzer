@@ -1,32 +1,19 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, BaseSettings
-from typing import List, Optional
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
 import asyncpraw
 import asyncio
 from datetime import datetime, timedelta
-import os
-from dotenv import load_dotenv
 import logging
 from contextlib import asynccontextmanager
+from backend.services.ai_service import analyze_posts
+from backend.config import settings
+from backend.api.auth import router as auth_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Load environment variables
-load_dotenv()
-
-class Settings(BaseSettings):
-    REDDIT_CLIENT_ID: str
-    REDDIT_CLIENT_SECRET: str
-    REDDIT_USER_AGENT: str
-
-    class Config:
-        env_file = ".env"
-
-# Initialize settings
-settings = Settings()
 
 # Reddit API configuration
 async def get_reddit():
@@ -46,18 +33,28 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Reddit Topic Analyzer", lifespan=lifespan)
 
-# Configure CORS
+# Configure CORS with specific origins for development
+origins = [
+    "http://localhost:3000",    # React default port
+    "http://localhost:5173",    # Vite default port
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Подключаем роутер авторизации с префиксом
+app.include_router(auth_router, prefix="/api")
+
 class SearchRequest(BaseModel):
     topic: str
-    limit: Optional[int] = 100
+    limit: Optional[int] = 20
 
 class RedditPost(BaseModel):
     id: str
@@ -71,7 +68,11 @@ class RedditPost(BaseModel):
     author: str
     permalink: str
 
-@app.post("/api/search", response_model=List[RedditPost])
+class AnalysisResponse(BaseModel):
+    posts: List[RedditPost]
+    analysis: Dict[str, Any]
+
+@app.post("/api/search", response_model=AnalysisResponse)
 async def search_reddit(request: SearchRequest):
     try:
         logger.info(f"Searching for topic: {request.topic}")
@@ -83,8 +84,8 @@ async def search_reddit(request: SearchRequest):
         # Search for submissions
         async for submission in subreddit.search(
             query=request.topic,
-            sort="new",
-            time_filter="day",
+            sort="hot",
+            time_filter="month",
             limit=request.limit
         ):
             try:
@@ -112,11 +113,15 @@ async def search_reddit(request: SearchRequest):
                 continue
 
         logger.info(f"Found {len(posts)} posts")
-        return posts
+        
+        # Get AI analysis
+        analysis_result = await analyze_posts([post.dict() for post in posts])
+        
+        return AnalysisResponse(posts=posts, analysis=analysis_result)
     except Exception as e:
         logger.error(f"Error in search_reddit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=8000)
