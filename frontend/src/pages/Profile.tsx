@@ -17,6 +17,16 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Grid,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  LinearProgress,
+  Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -24,21 +34,37 @@ import {
   CalendarToday as CalendarIcon,
   Delete as DeleteIcon,
   Search as SearchIcon,
+  ArrowBack as ArrowBackIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { format } from 'date-fns';
+import { Link as RouterLink } from 'react-router-dom';
 
 interface SearchHistoryItem {
   id: number;
   topic: string;
   created_at: string;
   results: {
+    posts: Array<{
+      id: string;
+      title: string;
+      text: string;
+      url: string;
+      score: number;
+      num_comments: number;
+      created_utc: number;
+      subreddit: string;
+      author: string;
+      permalink: string;
+    }>;
     analysis: {
-      summary?: string;
-      topics?: string[];
-      sentiment?: string;
+      overall_sentiment: string;
+      toxicity_level: number;
+      frequent_words: string[];
+      influential_accounts: string[];
     };
   };
 }
@@ -59,209 +85,334 @@ export default function Profile() {
     try {
       await axios.delete(`http://localhost:8000/api/auth/me/history/${id}`);
       // Перезагрузить историю после удаления
-      // TODO: Implement deletion endpoint on backend
     } catch (error) {
-      console.error('Error deleting history:', error);
+      console.error('Error deleting history item:', error);
     }
   };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', gap: 4, flexDirection: { xs: 'column', md: 'row' } }}>
-        {/* Профиль пользователя */}
-        <Card sx={{ flex: '0 0 300px' }} elevation={0}>
-          <CardContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-              <Avatar
-                sx={{
-                  width: 100,
-                  height: 100,
-                  bgcolor: 'primary.main',
-                  fontSize: '2.5rem',
-                  mb: 2,
-                }}
-              >
-                {user?.username.charAt(0).toUpperCase()}
-              </Avatar>
-              <Typography variant="h5" gutterBottom>
-                {user?.username}
+      <Button
+        component={RouterLink}
+        to="/"
+        startIcon={<ArrowBackIcon />}
+        sx={{
+          mb: 3,
+          color: 'text.secondary',
+          '&:hover': {
+            bgcolor: 'rgba(0, 0, 0, 0.04)',
+            color: 'primary.main',
+          },
+        }}
+      >
+        Back to Search
+      </Button>
+
+      <Grid container spacing={4}>
+        {/* User Info Card */}
+        <Grid item xs={12} md={4}>
+          <Card elevation={0}>
+            <CardContent>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+                <Avatar
+                  sx={{
+                    width: 80,
+                    height: 80,
+                    bgcolor: 'primary.main',
+                    mb: 2,
+                  }}
+                >
+                  {user?.username.charAt(0).toUpperCase()}
+                </Avatar>
+                <Typography variant="h5" gutterBottom>
+                  {user?.username}
+                </Typography>
+              </Box>
+              <Divider sx={{ my: 2 }} />
+              <List>
+                <ListItem>
+                  <ListItemText
+                    primary="Email"
+                    secondary={user?.email}
+                    primaryTypographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Member Since"
+                    secondary={format(new Date(user?.created_at || new Date()), 'MMMM d, yyyy')}
+                    primaryTypographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
+                  />
+                </ListItem>
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Search History Card */}
+        <Grid item xs={12} md={8}>
+          <Card elevation={0}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom color="primary">
+                Search History
               </Typography>
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
-            <List>
-              <ListItem>
-                <PersonIcon sx={{ mr: 2, color: 'primary.main' }} />
-                <ListItemText primary="Username" secondary={user?.username} />
-              </ListItem>
-              <ListItem>
-                <EmailIcon sx={{ mr: 2, color: 'primary.main' }} />
-                <ListItemText primary="Email" secondary={user?.email} />
-              </ListItem>
-              <ListItem>
-                <CalendarIcon sx={{ mr: 2, color: 'primary.main' }} />
-                <ListItemText
-                  primary="Member Since"
-                  secondary={format(new Date(user?.created_at || new Date()), 'MMMM d, yyyy')}
-                />
-              </ListItem>
-            </List>
-          </CardContent>
-        </Card>
-
-        {/* История поисков */}
-        <Box sx={{ flex: 1 }}>
-          <Typography
-            variant="h6"
-            gutterBottom
-            sx={{
-              borderBottom: '2px solid',
-              borderColor: 'primary.main',
-              pb: 1,
-              display: 'inline-block',
-            }}
-          >
-            Search History
-          </Typography>
-
-          {isLoading ? (
-            <Typography>Loading history...</Typography>
-          ) : searchHistory && searchHistory.length > 0 ? (
-            <List>
-              {searchHistory.map((item) => (
-                <Card key={item.id} sx={{ mb: 2 }} elevation={0}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                      <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                          {item.topic}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          {format(new Date(item.created_at), 'MMMM d, yyyy HH:mm')}
-                        </Typography>
-                        {item.results.analysis.topics && (
-                          <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {item.results.analysis.topics.map((topic, index) => (
-                              <Chip
-                                key={index}
-                                label={topic}
-                                size="small"
-                                sx={{
-                                  bgcolor: 'primary.light',
-                                  color: 'white',
-                                  '&:hover': { bgcolor: 'primary.main' },
-                                }}
-                              />
-                            ))}
-                          </Box>
-                        )}
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+              {isLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : searchHistory && searchHistory.length > 0 ? (
+                <List>
+                  {searchHistory.map((item) => (
+                    <ListItem
+                      key={item.id}
+                      sx={{
+                        mb: 1,
+                        bgcolor: 'background.paper',
+                        borderRadius: 1,
+                        '&:hover': {
+                          bgcolor: 'rgba(0, 0, 0, 0.02)',
+                        },
+                      }}
+                      secondaryAction={
                         <IconButton
-                          size="small"
-                          onClick={() => setSelectedHistory(item)}
-                          sx={{ color: 'primary.main' }}
-                        >
-                          <SearchIcon />
-                        </IconButton>
-                        <IconButton
-                          size="small"
+                          edge="end"
+                          aria-label="delete"
                           onClick={() => handleDeleteHistory(item.id)}
-                          sx={{ color: 'error.main' }}
                         >
                           <DeleteIcon />
                         </IconButton>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
-            </List>
-          ) : (
-            <Typography color="text.secondary">No search history yet</Typography>
-          )}
-        </Box>
-      </Box>
+                      }
+                    >
+                      <ListItemText
+                        primary={
+                          <Button
+                            onClick={() => setSelectedHistory(item)}
+                            sx={{
+                              textAlign: 'left',
+                              textTransform: 'none',
+                              color: 'text.primary',
+                              '&:hover': {
+                                bgcolor: 'transparent',
+                                color: 'primary.main',
+                              },
+                            }}
+                          >
+                            {item.topic}
+                          </Button>
+                        }
+                        secondary={format(new Date(item.created_at), 'PPpp')}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              ) : (
+                <Typography color="text.secondary" align="center" sx={{ py: 3 }}>
+                  No search history yet
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
-      {/* Диалог с деталями поиска */}
+      {/* Results Dialog */}
       <Dialog
         open={!!selectedHistory}
         onClose={() => setSelectedHistory(null)}
-        maxWidth="sm"
+        maxWidth="lg"
         fullWidth
       >
-        <DialogTitle>Search Details</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">
+            Results for: {selectedHistory?.topic}
+          </Typography>
+          <IconButton onClick={() => setSelectedHistory(null)}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
           {selectedHistory && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                {selectedHistory.topic}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                {format(new Date(selectedHistory.created_at), 'MMMM d, yyyy HH:mm')}
-              </Typography>
-              
-              {selectedHistory.results.analysis.summary && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom color="primary">
-                    Summary
-                  </Typography>
-                  <Typography variant="body2">
-                    {selectedHistory.results.analysis.summary}
-                  </Typography>
-                </Box>
-              )}
+            <Box sx={{ mt: 2 }}>
+              <Grid container spacing={3}>
+                {/* Overall Analysis Card */}
+                <Grid item xs={12} md={6}>
+                  <Card elevation={0}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Overall Analysis
+                      </Typography>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Sentiment
+                        </Typography>
+                        <Chip
+                          label={selectedHistory.results.analysis.overall_sentiment}
+                          color={
+                            selectedHistory.results.analysis.overall_sentiment === 'positive'
+                              ? 'success'
+                              : selectedHistory.results.analysis.overall_sentiment === 'negative'
+                              ? 'error'
+                              : 'default'
+                          }
+                          size="small"
+                          sx={{ mt: 0.5 }}
+                        />
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                          Toxicity Level
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={selectedHistory.results.analysis.toxicity_level * 100}
+                            sx={{
+                              height: 8,
+                              borderRadius: 4,
+                              bgcolor: 'grey.200',
+                              flex: 1,
+                              '& .MuiLinearProgress-bar': {
+                                bgcolor: selectedHistory.results.analysis.toxicity_level > 0.7 
+                                  ? 'error.main'
+                                  : selectedHistory.results.analysis.toxicity_level > 0.3
+                                  ? 'warning.main'
+                                  : 'success.main',
+                              },
+                            }}
+                          />
+                          <Typography variant="body2">
+                            {Math.round(selectedHistory.results.analysis.toxicity_level * 100)}%
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
 
-              {selectedHistory.results.analysis.topics && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom color="primary">
-                    Topics
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selectedHistory.results.analysis.topics.map((topic, index) => (
-                      <Chip
-                        key={index}
-                        label={topic}
-                        size="small"
-                        sx={{
-                          bgcolor: 'primary.light',
-                          color: 'white',
-                        }}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              )}
+                {/* Frequent Words Card */}
+                <Grid item xs={12} md={6}>
+                  <Card elevation={0}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Frequent Words
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {selectedHistory.results.analysis.frequent_words.map((word, index) => (
+                          <Chip
+                            key={index}
+                            label={word}
+                            size="small"
+                            sx={{
+                              bgcolor: 'primary.light',
+                              color: 'white',
+                              '&:hover': { bgcolor: 'primary.main' },
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
 
-              {selectedHistory.results.analysis.sentiment && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom color="primary">
-                    Sentiment
-                  </Typography>
-                  <Chip
-                    label={selectedHistory.results.analysis.sentiment}
-                    size="small"
-                    sx={{
-                      bgcolor: selectedHistory.results.analysis.sentiment.toLowerCase().includes('positive')
-                        ? 'success.light'
-                        : selectedHistory.results.analysis.sentiment.toLowerCase().includes('negative')
-                        ? 'error.light'
-                        : 'grey.200',
-                      color: selectedHistory.results.analysis.sentiment.toLowerCase().includes('positive')
-                        ? 'success.dark'
-                        : selectedHistory.results.analysis.sentiment.toLowerCase().includes('negative')
-                        ? 'error.dark'
-                        : 'text.primary',
-                    }}
-                  />
-                </Box>
-              )}
+                {/* Influential Accounts Card */}
+                <Grid item xs={12}>
+                  <Card elevation={0}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Top Contributors
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {selectedHistory.results.analysis.influential_accounts.map((account, index) => (
+                          <Chip
+                            key={index}
+                            label={account}
+                            size="small"
+                            sx={{
+                              bgcolor: index === 0 ? 'warning.light' : 'grey.100',
+                              color: index === 0 ? 'warning.dark' : 'text.primary',
+                              border: index === 0 ? '1px solid' : 'none',
+                              borderColor: 'warning.main',
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Reddit Posts Table */}
+                <Grid item xs={12}>
+                  <Card elevation={0}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Reddit Posts
+                      </Typography>
+                      <TableContainer>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Title</TableCell>
+                              <TableCell align="right">Score</TableCell>
+                              <TableCell align="right">Comments</TableCell>
+                              <TableCell>Subreddit</TableCell>
+                              <TableCell>Author</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {selectedHistory.results.posts.map((post) => (
+                              <TableRow
+                                key={post.id}
+                                sx={{
+                                  '&:hover': {
+                                    bgcolor: 'rgba(0, 0, 0, 0.04)',
+                                    cursor: 'pointer',
+                                  },
+                                }}
+                                onClick={() => window.open(post.permalink, '_blank')}
+                              >
+                                <TableCell>
+                                  <Tooltip title={post.text} placement="top-start">
+                                    <Typography
+                                      variant="body2"
+                                      sx={{
+                                        maxWidth: '400px',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {post.title}
+                                    </Typography>
+                                  </Tooltip>
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Chip
+                                    label={post.score}
+                                    size="small"
+                                    color={post.score > 1000 ? 'primary' : 'default'}
+                                  />
+                                </TableCell>
+                                <TableCell align="right">{post.num_comments}</TableCell>
+                                <TableCell>r/{post.subreddit}</TableCell>
+                                <TableCell>{post.author}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSelectedHistory(null)}>Close</Button>
+          <Button onClick={() => setSelectedHistory(null)} color="primary">
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>

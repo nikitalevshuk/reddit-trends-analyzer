@@ -15,6 +15,14 @@ import {
   Chip,
   Link,
   Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  LinearProgress,
+  Tooltip,
 } from '@mui/material';
 import { LogoutOutlined, SearchOutlined, PersonOutline, Person } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
@@ -36,11 +44,23 @@ interface RedditPost {
 }
 
 interface SearchResponse {
-  posts: RedditPost[];
+  posts: Array<{
+    id: string;
+    title: string;
+    text: string;
+    url: string;
+    score: number;
+    num_comments: number;
+    created_utc: number;
+    subreddit: string;
+    author: string;
+    permalink: string;
+  }>;
   analysis: {
-    summary?: string;
-    topics?: string[];
-    sentiment?: string;
+    overall_sentiment: string;
+    toxicity_level: number;
+    frequent_words: string[];
+    influential_accounts: string[];
   };
 }
 
@@ -250,172 +270,178 @@ export default function Dashboard() {
           )}
 
           {data && (
-            <Box sx={{ width: '100%' }}>
-              <Card sx={{ mb: 4 }} elevation={0}>
-                <CardContent>
-                  <Typography 
-                    variant="h6" 
-                    gutterBottom 
-                    sx={{ 
-                      borderBottom: '2px solid',
-                      borderColor: 'primary.main',
-                      pb: 1,
-                      display: 'inline-block'
-                    }}
-                  >
-                    Analysis Results
-                  </Typography>
-
-                  {data.analysis?.summary ? (
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="subtitle1" gutterBottom fontWeight="bold" color="primary">
-                        Summary
+            <Box sx={{ mt: 4 }}>
+              <Grid container spacing={3}>
+                {/* Overall Analysis Card */}
+                <Grid item xs={12} md={6}>
+                  <Card elevation={0}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Overall Analysis
                       </Typography>
-                      <Typography 
-                        paragraph 
-                        sx={{ 
-                          bgcolor: '#f8f9fa',
-                          p: 2,
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: 'divider'
-                        }}
-                      >
-                        {data.analysis.summary}
-                      </Typography>
-                    </Box>
-                  ) : null}
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Sentiment
+                        </Typography>
+                        <Chip
+                          label={data.analysis.overall_sentiment}
+                          color={
+                            data.analysis.overall_sentiment === 'positive'
+                              ? 'success'
+                              : data.analysis.overall_sentiment === 'negative'
+                              ? 'error'
+                              : 'default'
+                          }
+                          size="small"
+                          sx={{ mt: 0.5 }}
+                        />
+                      </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                          Toxicity Level
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={data.analysis.toxicity_level * 100}
+                            sx={{
+                              height: 8,
+                              borderRadius: 4,
+                              bgcolor: 'grey.200',
+                              flex: 1,
+                              '& .MuiLinearProgress-bar': {
+                                bgcolor: data.analysis.toxicity_level > 0.7 
+                                  ? 'error.main'
+                                  : data.analysis.toxicity_level > 0.3
+                                  ? 'warning.main'
+                                  : 'success.main',
+                              },
+                            }}
+                          />
+                          <Typography variant="body2">
+                            {Math.round(data.analysis.toxicity_level * 100)}%
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
 
-                  {data.analysis?.topics && data.analysis.topics.length > 0 && (
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="subtitle1" gutterBottom fontWeight="bold" color="primary">
-                        Key Topics
+                {/* Frequent Words Card */}
+                <Grid item xs={12} md={6}>
+                  <Card elevation={0}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Frequent Words
                       </Typography>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {data.analysis.topics.map((topic: string, index: number) => (
+                        {data.analysis.frequent_words.map((word, index) => (
                           <Chip
                             key={index}
-                            label={topic}
+                            label={word}
+                            size="small"
                             sx={{
                               bgcolor: 'primary.light',
                               color: 'white',
-                              '&:hover': { bgcolor: 'primary.main' }
+                              '&:hover': { bgcolor: 'primary.main' },
                             }}
                           />
                         ))}
                       </Box>
-                    </Box>
-                  )}
+                    </CardContent>
+                  </Card>
+                </Grid>
 
-                  {data.analysis?.sentiment && (
-                    <Box>
-                      <Typography variant="subtitle1" gutterBottom fontWeight="bold" color="primary">
-                        Overall Sentiment
+                {/* Influential Accounts Card */}
+                <Grid item xs={12}>
+                  <Card elevation={0}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Top Contributors
                       </Typography>
-                      <Chip
-                        label={data.analysis.sentiment}
-                        sx={{
-                          bgcolor: data.analysis.sentiment.toLowerCase().includes('positive')
-                            ? 'success.light'
-                            : data.analysis.sentiment.toLowerCase().includes('negative')
-                            ? 'error.light'
-                            : 'grey.200',
-                          color: data.analysis.sentiment.toLowerCase().includes('positive')
-                            ? 'success.dark'
-                            : data.analysis.sentiment.toLowerCase().includes('negative')
-                            ? 'error.dark'
-                            : 'text.primary',
-                          fontWeight: 'bold'
-                        }}
-                      />
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {data.analysis.influential_accounts.map((account, index) => (
+                          <Chip
+                            key={index}
+                            label={account}
+                            size="small"
+                            sx={{
+                              bgcolor: index === 0 ? 'warning.light' : 'grey.100',
+                              color: index === 0 ? 'warning.dark' : 'text.primary',
+                              border: index === 0 ? '1px solid' : 'none',
+                              borderColor: 'warning.main',
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
 
-              {data.posts && data.posts.length > 0 && (
-                <>
-                  <Typography 
-                    variant="h6" 
-                    gutterBottom 
-                    sx={{ 
-                      borderBottom: '2px solid',
-                      borderColor: 'primary.main',
-                      pb: 1,
-                      display: 'inline-block',
-                      mb: 3
-                    }}
-                  >
-                    Reddit Posts ({data.posts.length})
-                  </Typography>
-                  <Grid container spacing={2}>
-                    {data.posts.map((post: RedditPost) => (
-                      <Grid item xs={12} key={post.id}>
-                        <Card 
-                          elevation={0}
-                          sx={{ 
-                            '&:hover': { 
-                              bgcolor: '#f8f9fa',
-                              transform: 'translateY(-2px)',
-                              transition: 'all 0.2s ease-in-out'
-                            }
-                          }}
-                        >
-                          <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                              <Link
-                                href={`https://reddit.com${post.permalink}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                sx={{ 
-                                  color: 'text.primary',
-                                  textDecoration: 'none',
-                                  '&:hover': { 
-                                    color: 'primary.main',
-                                    textDecoration: 'none'
-                                  }
-                                }}
-                              >
-                                {post.title}
-                              </Link>
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              gutterBottom
-                              sx={{ display: 'flex', gap: 1, alignItems: 'center' }}
-                            >
-                              <span>Posted by {post.author}</span>
-                              <span>•</span>
-                              <span>r/{post.subreddit}</span>
-                              <span>•</span>
-                              <span>Score: {post.score}</span>
-                              <span>•</span>
-                              <span>Comments: {post.num_comments}</span>
-                            </Typography>
-                            {post.text && (
-                              <Typography
-                                variant="body2"
+                {/* Reddit Posts Table */}
+                <Grid item xs={12}>
+                  <Card elevation={0}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom color="primary">
+                        Reddit Posts
+                      </Typography>
+                      <TableContainer>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Title</TableCell>
+                              <TableCell align="right">Score</TableCell>
+                              <TableCell align="right">Comments</TableCell>
+                              <TableCell>Subreddit</TableCell>
+                              <TableCell>Author</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {data.posts.map((post) => (
+                              <TableRow
+                                key={post.id}
                                 sx={{
-                                  mt: 1,
-                                  color: 'text.secondary',
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 3,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
+                                  '&:hover': {
+                                    bgcolor: 'rgba(0, 0, 0, 0.04)',
+                                    cursor: 'pointer',
+                                  },
                                 }}
+                                onClick={() => window.open(post.permalink, '_blank')}
                               >
-                                {post.text}
-                              </Typography>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </>
-              )}
+                                <TableCell>
+                                  <Tooltip title={post.text} placement="top-start">
+                                    <Typography
+                                      variant="body2"
+                                      sx={{
+                                        maxWidth: '400px',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {post.title}
+                                    </Typography>
+                                  </Tooltip>
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Chip
+                                    label={post.score}
+                                    size="small"
+                                    color={post.score > 1000 ? 'primary' : 'default'}
+                                  />
+                                </TableCell>
+                                <TableCell align="right">{post.num_comments}</TableCell>
+                                <TableCell>r/{post.subreddit}</TableCell>
+                                <TableCell>{post.author}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
             </Box>
           )}
         </Box>
