@@ -56,12 +56,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Reddit Topic Analyzer", lifespan=lifespan)
 
-# Configure CORS with specific origins for development
+# Configure CORS with specific origins for development and production
 origins = [
     "http://localhost:3000",    # React default port
     "http://localhost:5173",    # Vite default port
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
+    "https://*.up.railway.app",  # Railway domains
 ]
 
 app.add_middleware(
