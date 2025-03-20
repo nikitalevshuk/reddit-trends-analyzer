@@ -3,30 +3,21 @@ from functools import lru_cache
 from typing import Optional
 
 class Settings(BaseSettings):
-    # Database settings
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: str = "5432"
-    POSTGRES_DB: str = "reddit_analyzer"
+    # Database
+    DATABASE_URL: str
 
-    # Reddit API settings
+    # Reddit API
     REDDIT_CLIENT_ID: str
     REDDIT_CLIENT_SECRET: str
-    REDDIT_USER_AGENT: str = "Reddit Topic Analyzer v1.0"
+    REDDIT_USER_AGENT: str
 
-    # OpenAI settings
+    # OpenAI
     OPENAI_API_KEY: str
 
-    # JWT settings
+    # JWT
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-
-    @property
-    def DATABASE_URL(self) -> str:
-        """Формируем URL для подключения к базе данных"""
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     class Config:
         env_file = ".env"
