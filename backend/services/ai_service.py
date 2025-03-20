@@ -26,14 +26,17 @@ async def analyze_posts(posts: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     try:
         # Prepare posts data for analysis
+        logger.debug("Starting to prepare posts data for analysis")
         posts_text = []
         for post in posts:
             post_content = f"Title: {post['title']}\nText: {post['text']}\n"
             post_content += f"Author: {post['author']}, Score: {post['score']}, "
             post_content += f"Comments: {post['num_comments']}\n---\n"
             posts_text.append(post_content)
+        logger.debug(f"Prepared {len(posts_text)} posts for analysis")
 
         # Create analysis prompt
+        logger.debug("Creating analysis prompt")
         prompt = f"""Analyze the following Reddit posts and provide insights in JSON format.
         Posts to analyze:
         {''.join(posts_text[:20])}  # Limit to first 20 posts for API context length
@@ -56,6 +59,7 @@ async def analyze_posts(posts: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
 
         # Call OpenAI API
+        logger.debug("Calling OpenAI API")
         response = await client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -66,13 +70,15 @@ async def analyze_posts(posts: List[Dict[str, Any]]) -> Dict[str, Any]:
             max_tokens=1000,
             response_format={"type": "json_object"}
         )
+        logger.debug("Received response from OpenAI API")
 
         # Parse the response
         analysis_text = response.choices[0].message.content.strip()
-        logger.info(f"Analysis text: {analysis_text}")
+        logger.debug(f"Analysis text: {analysis_text}")
         analysis_result = json.loads(analysis_text)
 
         # Validate and clean up the response
+        logger.debug("Validating and cleaning up the response")
         required_keys = ["overall_sentiment", "toxicity_level", "frequent_words", "influential_accounts"]
         for key in required_keys:
             if key not in analysis_result:
@@ -84,9 +90,9 @@ async def analyze_posts(posts: List[Dict[str, Any]]) -> Dict[str, Any]:
         # Limit arrays to reasonable sizes
         analysis_result["frequent_words"] = analysis_result["frequent_words"][:10]
         analysis_result["influential_accounts"] = analysis_result["influential_accounts"][:5]
-        logger.info(f"Analysis result: {analysis_result}")
+        logger.debug(f"Analysis result: {analysis_result}")
 
-        logger.info("Successfully analyzed Reddit posts")
+        logger.debug("Successfully analyzed Reddit posts")
         return analysis_result
 
     except Exception as e:

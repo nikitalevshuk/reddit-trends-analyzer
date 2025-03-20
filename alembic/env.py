@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 # Импортируем модели и конфигурацию
-from backend.database import Base
+from backend.models.db_models import Base
 from backend.config import settings
 from backend.models.db_models import User  # Импортируем модели, чтобы Alembic их видел
 

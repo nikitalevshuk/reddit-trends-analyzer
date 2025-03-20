@@ -9,13 +9,13 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import logging
 import sys
-from backend.models.user import UserCreate, User, Token, TokenData
-from backend.models.db_models import User as DBUser
+from backend.models.user import UserCreate, User, Token, TokenData, SearchHistory, SearchHistoryCreate
+from backend.models.db_models import User as DBUser, SearchHistory as DBSearchHistory
 from backend.database import get_async_session
 from backend.config import settings
 
@@ -23,15 +23,10 @@ from backend.config import settings
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Создаем обработчик для вывода в консоль
-console_handler = logging.StreamHandler(sys.stdout)
+console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
-
-# Создаем форматтер для логов
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
-
-# Добавляем обработчик к логгеру
 logger.addHandler(console_handler)
 
 # Инициализация router
@@ -53,18 +48,18 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Создание JWT токена"""
-    logger.info("==================== START create_access_token ====================")
-    logger.info(f"Creating token with data: {data}")
-    logger.info(f"JWT_SECRET_KEY (first 10 chars): {settings.JWT_SECRET_KEY[:10]}...")
-    logger.info(f"JWT_ALGORITHM: {settings.JWT_ALGORITHM}")
+    logger.debug("==================== START create_access_token ====================")
+    logger.debug(f"Creating token with data: {data}")
+    logger.debug(f"JWT_SECRET_KEY (first 10 chars): {settings.JWT_SECRET_KEY[:10]}...")
+    logger.debug(f"JWT_ALGORITHM: {settings.JWT_ALGORITHM}")
     
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     
     token = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-    logger.info(f"✅ Token created successfully (first 10 chars): {token[:10]}...")
-    logger.info("==================== END create_access_token ====================")
+    logger.debug(f"✅ Token created successfully (first 10 chars): {token[:10]}...")
+    logger.debug("==================== END create_access_token ====================")
     return token
 
 async def get_current_user(
@@ -72,8 +67,8 @@ async def get_current_user(
     session: AsyncSession = Depends(get_async_session)
 ) -> DBUser:
     """Получение текущего пользователя из токена"""
-    logger.info("==================== START get_current_user ====================")
-    logger.info(f"Received token (first 10 chars): {token[:10]}...")
+    logger.debug("==================== START get_current_user ====================")
+    logger.debug(f"Received token (first 10 chars): {token[:10]}...")
     
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -82,18 +77,18 @@ async def get_current_user(
     )
     
     try:
-        logger.info(f"JWT_SECRET_KEY (first 10 chars): {settings.JWT_SECRET_KEY[:10]}...")
-        logger.info(f"JWT_ALGORITHM: {settings.JWT_ALGORITHM}")
+        logger.debug(f"JWT_SECRET_KEY (first 10 chars): {settings.JWT_SECRET_KEY[:10]}...")
+        logger.debug(f"JWT_ALGORITHM: {settings.JWT_ALGORITHM}")
         
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        logger.info(f"Token decoded successfully. Payload: {payload}")
+        logger.debug(f"Token decoded successfully. Payload: {payload}")
         
         username: str = payload.get("sub")
         if username is None:
             logger.error("❌ No username found in token payload")
             raise credentials_exception
         
-        logger.info(f"✅ Username extracted from token: {username}")
+        logger.debug(f"✅ Username extracted from token: {username}")
         token_data = TokenData(username=username)
         
     except JWTError as jwt_error:
@@ -106,7 +101,7 @@ async def get_current_user(
         raise credentials_exception
 
     try:
-        logger.info(f"Querying database for user: {username}")
+        logger.debug(f"Querying database for user: {username}")
         result = await session.execute(select(DBUser).where(DBUser.username == username))
         user = result.scalar_one_or_none()
         
@@ -115,8 +110,8 @@ async def get_current_user(
             logger.error("==================== END get_current_user (with error) ====================")
             raise credentials_exception
         
-        logger.info(f"✅ User found successfully: {user.username}")
-        logger.info("==================== END get_current_user ====================")
+        logger.debug(f"✅ User found successfully: {user.username}")
+        logger.debug("==================== END get_current_user ====================")
         return user
         
     except Exception as db_error:
@@ -183,4 +178,62 @@ async def login(
 @router.get("/me", response_model=User)
 async def read_users_me(current_user: DBUser = Depends(get_current_user)):
     """Получение информации о текущем пользователе"""
-    return User(username=current_user.username, email=current_user.email) 
+    return User(
+        id=current_user.id,
+        username=current_user.username,
+        email=current_user.email,
+        created_at=current_user.created_at
+    )
+
+@router.get("/me/history", response_model=List[SearchHistory])
+async def get_user_history(
+    current_user: DBUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Получение истории поиска пользователя"""
+    logger.debug(f"Getting search history for user: {current_user.username}")
+    
+    try:
+        result = await session.execute(
+            select(DBSearchHistory)
+            .where(DBSearchHistory.user_id == current_user.id)
+            .order_by(DBSearchHistory.created_at.desc())
+        )
+        history = result.scalars().all()
+        
+        logger.debug(f"Found {len(history)} search history entries")
+        return history
+    except Exception as e:
+        logger.error(f"Error getting search history: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving search history"
+        )
+
+@router.post("/me/history", response_model=SearchHistory)
+async def create_search_history(
+    history: SearchHistoryCreate,
+    current_user: DBUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Создание записи в истории поиска"""
+    logger.debug(f"Creating search history for user: {current_user.username}")
+    
+    try:
+        db_history = DBSearchHistory(
+            user_id=current_user.id,
+            topic=history.topic,
+            results=history.results
+        )
+        session.add(db_history)
+        await session.commit()
+        await session.refresh(db_history)
+        
+        logger.debug(f"Created search history entry with ID: {db_history.id}")
+        return db_history
+    except Exception as e:
+        logger.error(f"Error creating search history: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error creating search history"
+        )

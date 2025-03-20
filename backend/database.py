@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.orm import sessionmaker
 from backend.config import settings
 
 # Создаем асинхронный движок SQLAlchemy
@@ -13,10 +13,6 @@ AsyncSessionLocal = sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
-
-# Базовый класс для всех моделей
-class Base(DeclarativeBase):
-    pass
 
 # Функция для получения сессии БД
 async def get_async_session():

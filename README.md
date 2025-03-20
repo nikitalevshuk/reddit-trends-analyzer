@@ -1,97 +1,186 @@
 # Reddit Topic Analyzer
 
-A web application that allows users to search for any topic on Reddit and get an analysis of recent posts.
+Reddit Topic Analyzer - это веб-приложение, которое позволяет анализировать обсуждения и настроения на Reddit по заданной теме. Приложение использует AI для анализа постов и комментариев, предоставляя полезные инсайты и визуализацию данных.
 
-## Features
+## Основные возможности
 
-- Search Reddit posts by topic
-- View detailed post information
-- Expandable post cards
-- Modern Material-UI interface
-- Real-time search results
+- 🔍 Поиск постов на Reddit по теме
+- 📊 Анализ настроений (sentiment analysis)
+- 📈 Определение трендов и часто используемых слов
+- 🎯 Выявление влиятельных пользователей
+- 📱 Адаптивный дизайн для всех устройств
 
-## Prerequisites
+## Технологический стек
 
-- Python 3.8+
-- Node.js 16+
-- Redis server
+- Frontend:
+  - React
+  - TypeScript
+  - Material-UI (MUI)
+  - React Router
+  - Context API для управления состоянием
+
+- Backend:
+  - Python
+  - FastAPI
+  - PRAW (Python Reddit API Wrapper)
+  - Natural Language Processing (NLP) библиотеки
+
+## Требования
+
+- Node.js (версия 14 или выше)
+- Python (версия 3.8 или выше)
 - Reddit API credentials
-- OpenAI API key
 
-## Setup
+## Установка и запуск
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd reddit-topic-analyzer
-```
+### Frontend
 
-2. Set up the backend:
-```bash
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy .env.example to .env and fill in your credentials
-cp .env.example .env
-```
-
-3. Set up the frontend:
+1. Перейдите в директорию frontend:
 ```bash
 cd frontend
+```
+
+2. Установите зависимости:
+```bash
 npm install
+# или
+yarn install
 ```
 
-4. Start Redis server:
+3. Создайте файл .env в директории frontend:
+```env
+REACT_APP_API_URL=http://localhost:8000
+```
+
+4. Запустите приложение:
 ```bash
-# On Windows, make sure Redis is installed and running
-# On Linux/Mac:
-redis-server
+npm start
+# или
+yarn start
 ```
 
-5. Start the backend server:
+Приложение будет доступно по адресу http://localhost:3000
+
+### Backend
+
+1. Перейдите в директорию backend:
 ```bash
-# From the root directory
-uvicorn backend.main:app --reload
+cd backend
 ```
 
-6. Start the frontend development server:
+2. Создайте и активируйте виртуальное окружение:
 ```bash
-# From the frontend directory
-npm run dev
+python -m venv venv
+source venv/bin/activate  # для Linux/Mac
+venv\Scripts\activate     # для Windows
 ```
 
-7. Open your browser and navigate to `http://localhost:5173`
-
-## Environment Variables
-
-Create a `.env` file in the root directory with the following variables:
-
+3. Установите зависимости:
+```bash
+pip install -r requirements.txt
 ```
-REDDIT_CLIENT_ID=your_reddit_client_id
-REDDIT_CLIENT_SECRET=your_reddit_client_secret
+
+4. Создайте файл .env в директории backend:
+```env
+REDDIT_CLIENT_ID=your_client_id
+REDDIT_CLIENT_SECRET=your_client_secret
 REDDIT_USER_AGENT=your_user_agent
-OPENAI_API_KEY=your_openai_api_key
-REDIS_URL=redis://localhost:6379
+```
+
+5. Запустите сервер:
+```bash
+uvicorn main:app --reload
+```
+
+Сервер будет доступен по адресу http://localhost:8000
+
+## Структура проекта
+
+```
+reddit-analyzer/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Reddit/
+│   │   │   ├── Auth/
+│   │   │   └── Layout/
+│   │   ├── contexts/
+│   │   └── App.tsx
+│   ├── package.json
+│   └── tsconfig.json
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   ├── models/
+│   │   └── services/
+│   ├── requirements.txt
+│   └── main.py
+└── README.md
 ```
 
 ## API Endpoints
 
-- `POST /api/search`: Search Reddit posts by topic
-  - Request body: `{ "topic": "your search topic", "limit": 100 }`
-  - Returns: List of Reddit posts with their details
+### POST /api/search
+Поиск и анализ постов на Reddit.
 
-## Contributing
+Request:
+```json
+{
+  "topic": "string"
+}
+```
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Response:
+```json
+{
+  "posts": [
+    {
+      "id": "string",
+      "title": "string",
+      "text": "string",
+      "url": "string",
+      "score": "number",
+      "num_comments": "number",
+      "created_utc": "number",
+      "subreddit": "string",
+      "author": "string",
+      "permalink": "string"
+    }
+  ],
+  "analysis": {
+    "overall_sentiment": "string",
+    "toxicity_level": "number",
+    "frequent_words": ["string"],
+    "influential_accounts": ["string"]
+  }
+}
+```
 
-## License
+## Разработка
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+### Добавление новых функций
+
+1. Создайте новую ветку для функционала:
+```bash
+git checkout -b feature/new-feature
+```
+
+2. Внесите изменения и создайте коммит:
+```bash
+git add .
+git commit -m "Add new feature"
+```
+
+3. Отправьте изменения в репозиторий:
+```bash
+git push origin feature/new-feature
+```
+
+### Код стайл
+
+- Frontend: следуйте правилам ESLint и Prettier
+- Backend: следуйте PEP 8
+
+## Лицензия
+
+MIT License. См. файл LICENSE для деталей. 
