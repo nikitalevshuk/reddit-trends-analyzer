@@ -30,7 +30,6 @@ import {
   Paper,
 } from '@mui/material';
 import {
-  Person as PersonIcon,
   Email as EmailIcon,
   CalendarToday as CalendarIcon,
   Delete as DeleteIcon,

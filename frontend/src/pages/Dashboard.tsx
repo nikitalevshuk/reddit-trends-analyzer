@@ -8,12 +8,8 @@ import {
   Card,
   CardContent,
   Grid,
-  AppBar,
-  Toolbar,
-  IconButton,
   CircularProgress,
   Chip,
-  Link,
   Paper,
   Table,
   TableBody,
@@ -24,24 +20,17 @@ import {
   LinearProgress,
   Tooltip,
 } from '@mui/material';
-import { LogoutOutlined, SearchOutlined, PersonOutline, Person, Reddit as RedditIcon, Psychology as PsychologyIcon, Analytics as AnalyticsIcon, Security as SecurityIcon } from '@mui/icons-material';
+import {
+  Person,
+  Reddit as RedditIcon,
+  Psychology as PsychologyIcon,
+  Analytics as AnalyticsIcon,
+  Security as SecurityIcon,
+} from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { useQuery, UseQueryOptions, QueryObserverSuccessCallback } from '@tanstack/react-query';
+import { Link as RouterLink } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-
-interface RedditPost {
-  id: string;
-  title: string;
-  text: string;
-  url: string;
-  score: number;
-  num_comments: number;
-  created_utc: number;
-  subreddit: string;
-  author: string;
-  permalink: string;
-}
 
 interface SearchResponse {
   posts: Array<{
@@ -65,14 +54,11 @@ interface SearchResponse {
 }
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchTopic, setSearchTopic] = useState('');
   const [searchEnabled, setSearchEnabled] = useState(false);
 
-  const queryOptions: UseQueryOptions<SearchResponse, Error, SearchResponse> & {
-    onSuccess?: QueryObserverSuccessCallback<SearchResponse>
-  } = {
+  const queryOptions = {
     queryKey: ['redditSearch', searchTopic],
     queryFn: async () => {
       console.log('Sending request with topic:', searchTopic);
@@ -86,22 +72,13 @@ export default function Dashboard() {
     enabled: searchEnabled && !!searchTopic,
     refetchOnWindowFocus: false,
     retry: false,
-    onSuccess: (data: SearchResponse) => {
-      console.log('Response received:', data);
-      setSearchEnabled(false);
-    }
   };
 
-  const { data, isLoading, error } = useQuery<SearchResponse, Error>(queryOptions);
+  const { data, isLoading } = useQuery<SearchResponse, Error>(queryOptions);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchEnabled(true);
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
   };
 
   return (
