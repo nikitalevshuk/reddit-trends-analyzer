@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    VERCEL_URL: str
+
     class Config:
         env_file = ".env"
 

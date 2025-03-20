@@ -151,7 +151,7 @@ async def register(
     await session.commit()
     await session.refresh(db_user)
     
-    return User(username=db_user.username, email=db_user.email)
+    return User(username=db_user.username, email=db_user.email, id=db_user.id, created_at=db_user.created_at)
 
 @router.post("/login", response_model=Token)
 async def login(

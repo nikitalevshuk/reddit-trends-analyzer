@@ -30,7 +30,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../config/api';
 
 interface SearchResponse {
   posts: Array<{
@@ -62,7 +62,7 @@ export default function Dashboard() {
     queryKey: ['redditSearch', searchTopic],
     queryFn: async () => {
       console.log('Sending request with topic:', searchTopic);
-      const response = await axios.post<SearchResponse>('http://localhost:8000/api/search', {
+      const response = await api.post<SearchResponse>('/api/search', {
         topic: searchTopic,
         limit: 10,
       });
