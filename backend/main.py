@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import ssl
 import aiohttp
+from datetime import datetime
 
 project_root = str(Path(__file__).parent.parent)
 sys.path.append(project_root)
@@ -168,6 +169,10 @@ async def search_reddit(
     except Exception as e:
         logger.error(f"Error in search_reddit: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 if __name__ == "__main__":
     import uvicorn
