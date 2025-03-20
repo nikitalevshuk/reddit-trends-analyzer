@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
+import api from '../config/api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -26,14 +26,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       fetchUser();
     }
   }, []);
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/auth/me');
+      const response = await api.get('/api/auth/me');
       setUser(response.data);
       setIsAuthenticated(true);
     } catch (error) {
@@ -48,11 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       formData.append('username', username);
       formData.append('password', password);
 
-      const response = await axios.post('http://localhost:8000/api/auth/login', formData);
+      const response = await api.post('/api/auth/login', formData);
       const { access_token } = response.data;
       
       localStorage.setItem('token', access_token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
       await fetchUser();
     } catch (error) {
@@ -63,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (username: string, email: string, password: string) => {
     try {
-      await axios.post('http://localhost:8000/api/auth/register', {
+      await api.post('/api/auth/register', {
         username,
         email,
         password,
@@ -76,7 +74,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
     setUser(null);
     setIsAuthenticated(false);
   };
