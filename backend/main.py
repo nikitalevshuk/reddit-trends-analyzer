@@ -63,6 +63,8 @@ origins = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
     "https://*.up.railway.app",  # Railway domains
+    "https://*.vercel.app",     # Vercel domains
+    settings.VERCEL_URL,  # Your specific Vercel app
 ]
 
 app.add_middleware(
