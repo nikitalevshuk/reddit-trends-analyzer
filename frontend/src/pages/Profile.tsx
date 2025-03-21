@@ -39,10 +39,10 @@ import {
   History as HistoryIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Link as RouterLink } from 'react-router-dom';
+import api from '../config/api';
 
 interface SearchHistoryItem {
   id: number;
@@ -73,22 +73,31 @@ interface SearchHistoryItem {
 export default function Profile() {
   const { user } = useAuth();
   const [selectedHistory, setSelectedHistory] = useState<SearchHistoryItem | null>(null);
+  const queryClient = useQueryClient();
 
-  const { data: searchHistory, isLoading } = useQuery<SearchHistoryItem[]>({
+  const { data: searchHistory, isLoading, error } = useQuery<SearchHistoryItem[]>({
     queryKey: ['searchHistory'],
     queryFn: async () => {
-      const response = await axios.get('http://localhost:8000/api/auth/me/history');
+      const response = await api.get('/api/auth/me/history');
       return response.data;
     },
   });
 
   const handleDeleteHistory = async (id: number) => {
     try {
-      await axios.delete(`http://localhost:8000/api/auth/me/history/${id}`);
-      // Перезагрузить историю после удаления
+      await api.delete(`/api/auth/me/history/${id}`);
+      queryClient.invalidateQueries(['searchHistory']);
     } catch (error) {
       console.error('Error deleting history item:', error);
     }
+  };
+
+  const handleViewResults = (item: SearchHistoryItem) => {
+    setSelectedHistory(item);
+  };
+
+  const handleCloseResults = () => {
+    setSelectedHistory(null);
   };
 
   return (
@@ -229,6 +238,10 @@ export default function Profile() {
                   <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                     <CircularProgress />
                   </Box>
+                ) : error ? (
+                  <Typography color="error" align="center">
+                    Error loading search history
+                  </Typography>
                 ) : searchHistory && searchHistory.length > 0 ? (
                   <List sx={{ '& > *:not(:last-child)': { mb: 2 } }}>
                     {searchHistory.map((item) => (
@@ -250,394 +263,148 @@ export default function Profile() {
                           },
                         }}
                       >
-                        <ListItem
-                          sx={{
-                            cursor: 'pointer',
-                            py: 2,
-                          }}
-                          onClick={() => setSelectedHistory(item)}
-                          secondaryAction={
-                            <IconButton
-                              edge="end"
-                              aria-label="delete"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteHistory(item.id);
-                              }}
-                              sx={{
-                                color: 'error.light',
-                                '&:hover': {
-                                  color: 'error.main',
-                                  bgcolor: 'error.lighter',
-                                },
-                              }}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          }
-                        >
-                          <ListItemText
-                            primary={
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <SearchIcon fontSize="small" color="primary" />
-                                <Typography variant="subtitle1" fontWeight="medium">
-                                  {item.topic}
-                                </Typography>
-                              </Box>
-                            }
-                            secondary={
-                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                {format(new Date(item.created_at), 'PPpp')}
-                              </Typography>
-                            }
-                          />
-                        </ListItem>
+                        <Box sx={{ p: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                            <Typography variant="h6" component="div">
+                              {item.topic}
+                            </Typography>
+                            <Box>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleViewResults(item)}
+                                sx={{ mr: 1 }}
+                              >
+                                <SearchIcon />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteHistory(item.id)}
+                                color="error"
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            {format(new Date(item.created_at), 'PPpp')}
+                          </Typography>
+                          <Box sx={{ mt: 1 }}>
+                            <Chip
+                              size="small"
+                              label={`${item.results.posts.length} posts`}
+                              sx={{ mr: 1 }}
+                            />
+                            <Chip
+                              size="small"
+                              label={item.results.analysis.overall_sentiment}
+                              color="primary"
+                              variant="outlined"
+                            />
+                          </Box>
+                        </Box>
                       </Paper>
                     ))}
                   </List>
                 ) : (
-                  <Box
-                    sx={{
-                      py: 6,
-                      textAlign: 'center',
-                      bgcolor: 'rgba(0,0,0,0.02)',
-                      borderRadius: 2,
-                      border: '2px dashed',
-                      borderColor: 'divider',
-                    }}
-                  >
-                    <HistoryIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-                    <Typography color="text.secondary" variant="subtitle1">
-                      No search history yet
-                    </Typography>
-                    <Typography color="text.disabled" variant="body2" sx={{ mt: 1 }}>
-                      Your search queries will appear here
-                    </Typography>
-                  </Box>
+                  <Typography align="center" color="text.secondary">
+                    No search history yet
+                  </Typography>
                 )}
               </CardContent>
             </Card>
           </Grid>
         </Grid>
+      </Container>
 
-        {/* Results Dialog */}
-        <Dialog
-          open={!!selectedHistory}
-          onClose={() => setSelectedHistory(null)}
-          maxWidth="lg"
-          fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 2,
-              backgroundImage: 'linear-gradient(135deg, rgba(107,141,214,0.03) 0%, rgba(142,55,215,0.03) 100%)',
-            }
-          }}
-        >
-          <DialogTitle 
-            sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              pb: 2,
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <SearchIcon color="primary" />
-              <Typography variant="h6" fontWeight="bold">
-                Results for: {selectedHistory?.topic}
-              </Typography>
-            </Box>
-            <IconButton 
-              onClick={() => setSelectedHistory(null)}
-              sx={{
-                color: 'text.secondary',
-                '&:hover': { color: 'error.main' },
-              }}
-            >
+      {/* Results Dialog */}
+      <Dialog
+        open={!!selectedHistory}
+        onClose={handleCloseResults}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              Search Results: {selectedHistory?.topic}
+            </Typography>
+            <IconButton onClick={handleCloseResults}>
               <CloseIcon />
             </IconButton>
-          </DialogTitle>
-          <DialogContent dividers sx={{ bgcolor: 'transparent' }}>
-            {selectedHistory && (
-              <Box sx={{ mt: 2 }}>
-                <Grid container spacing={3}>
-                  {/* Overall Analysis Card */}
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedHistory && (
+            <>
+              {/* Analysis Section */}
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" gutterBottom>Analysis</Typography>
+                <Grid container spacing={2}>
                   <Grid item xs={12} md={6}>
-                    <Card 
-                      elevation={0}
-                      sx={{
-                        bgcolor: 'white',
-                        borderRadius: 2,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                      }}
-                    >
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom color="primary" fontWeight="bold">
-                          Overall Analysis
-                        </Typography>
-                        <Box sx={{ mb: 3 }}>
-                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                            Sentiment
-                          </Typography>
-                          <Chip
-                            label={selectedHistory.results.analysis.overall_sentiment}
-                            color={
-                              selectedHistory.results.analysis.overall_sentiment === 'positive'
-                                ? 'success'
-                                : selectedHistory.results.analysis.overall_sentiment === 'negative'
-                                ? 'error'
-                                : 'default'
-                            }
-                            size="small"
-                            sx={{ 
-                              mt: 0.5,
-                              fontWeight: 'medium',
-                              px: 1,
-                            }}
-                          />
-                        </Box>
-                        <Box>
-                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                            Toxicity Level
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <LinearProgress
-                              variant="determinate"
-                              value={selectedHistory.results.analysis.toxicity_level * 100}
-                              sx={{
-                                height: 10,
-                                borderRadius: 5,
-                                bgcolor: 'grey.100',
-                                flex: 1,
-                                '& .MuiLinearProgress-bar': {
-                                  bgcolor: selectedHistory.results.analysis.toxicity_level > 0.7 
-                                    ? 'error.main'
-                                    : selectedHistory.results.analysis.toxicity_level > 0.3
-                                    ? 'warning.main'
-                                    : 'success.main',
-                                  borderRadius: 5,
-                                },
-                              }}
-                            />
-                            <Typography 
-                              variant="body2" 
-                              fontWeight="medium"
-                              sx={{
-                                color: selectedHistory.results.analysis.toxicity_level > 0.7 
-                                  ? 'error.main'
-                                  : selectedHistory.results.analysis.toxicity_level > 0.3
-                                  ? 'warning.main'
-                                  : 'success.main',
-                              }}
-                            >
-                              {Math.round(selectedHistory.results.analysis.toxicity_level * 100)}%
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </CardContent>
-                    </Card>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>Overall Sentiment</Typography>
+                      <Typography variant="h6" color="primary">
+                        {selectedHistory.results.analysis.overall_sentiment}
+                      </Typography>
+                    </Paper>
                   </Grid>
-
-                  {/* Frequent Words Card */}
                   <Grid item xs={12} md={6}>
-                    <Card 
-                      elevation={0}
-                      sx={{
-                        bgcolor: 'white',
-                        borderRadius: 2,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                      }}
-                    >
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom color="primary" fontWeight="bold">
-                          Frequent Words
+                    <Paper sx={{ p: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>Toxicity Level</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={selectedHistory.results.analysis.toxicity_level * 100}
+                          sx={{ flexGrow: 1, mr: 2 }}
+                        />
+                        <Typography variant="body2">
+                          {Math.round(selectedHistory.results.analysis.toxicity_level * 100)}%
                         </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {selectedHistory.results.analysis.frequent_words.map((word, index) => (
-                            <Chip
-                              key={index}
-                              label={word}
-                              size="small"
-                              sx={{
-                                bgcolor: 'primary.light',
-                                color: 'white',
-                                fontWeight: 'medium',
-                                transition: 'all 0.2s ease-in-out',
-                                '&:hover': { 
-                                  bgcolor: 'primary.main',
-                                  transform: 'translateY(-1px)',
-                                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                },
-                              }}
-                            />
-                          ))}
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-
-                  {/* Influential Accounts Card */}
-                  <Grid item xs={12}>
-                    <Card 
-                      elevation={0}
-                      sx={{
-                        bgcolor: 'white',
-                        borderRadius: 2,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                      }}
-                    >
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom color="primary" fontWeight="bold">
-                          Top Contributors
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                          {selectedHistory.results.analysis.influential_accounts.map((account, index) => (
-                            <Chip
-                              key={index}
-                              label={account}
-                              size="small"
-                              sx={{
-                                bgcolor: index === 0 ? 'warning.lighter' : 'grey.50',
-                                color: index === 0 ? 'warning.darker' : 'text.primary',
-                                border: index === 0 ? '1px solid' : 'none',
-                                borderColor: 'warning.light',
-                                fontWeight: index === 0 ? 'bold' : 'medium',
-                                transition: 'all 0.2s ease-in-out',
-                                '&:hover': {
-                                  transform: 'translateY(-1px)',
-                                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                },
-                              }}
-                            />
-                          ))}
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-
-                  {/* Reddit Posts Table */}
-                  <Grid item xs={12}>
-                    <Card 
-                      elevation={0}
-                      sx={{
-                        bgcolor: 'white',
-                        borderRadius: 2,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                      }}
-                    >
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom color="primary" fontWeight="bold">
-                          Reddit Posts
-                        </Typography>
-                        <TableContainer>
-                          <Table>
-                            <TableHead>
-                              <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Title</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>Score</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>Comments</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Subreddit</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Author</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {selectedHistory.results.posts.map((post) => (
-                                <TableRow
-                                  key={post.id}
-                                  sx={{
-                                    transition: 'all 0.2s ease-in-out',
-                                    '&:hover': {
-                                      bgcolor: 'rgba(0, 0, 0, 0.02)',
-                                      cursor: 'pointer',
-                                    },
-                                  }}
-                                  onClick={() => window.open(post.permalink, '_blank')}
-                                >
-                                  <TableCell>
-                                    <Tooltip 
-                                      title={post.text || 'No additional text'} 
-                                      placement="top-start"
-                                      arrow
-                                    >
-                                      <Typography
-                                        variant="body2"
-                                        sx={{
-                                          maxWidth: '400px',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          whiteSpace: 'nowrap',
-                                          color: 'primary.main',
-                                          fontWeight: 'medium',
-                                        }}
-                                      >
-                                        {post.title}
-                                      </Typography>
-                                    </Tooltip>
-                                  </TableCell>
-                                  <TableCell align="right">
-                                    <Chip
-                                      label={post.score}
-                                      size="small"
-                                      color={post.score > 1000 ? 'primary' : 'default'}
-                                      sx={{ 
-                                        fontWeight: 'medium',
-                                        minWidth: 60,
-                                      }}
-                                    />
-                                  </TableCell>
-                                  <TableCell align="right">
-                                    <Typography variant="body2" fontWeight="medium">
-                                      {post.num_comments}
-                                    </Typography>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Chip
-                                      label={`r/${post.subreddit}`}
-                                      size="small"
-                                      sx={{ 
-                                        bgcolor: 'primary.lighter',
-                                        color: 'primary.darker',
-                                        fontWeight: 'medium',
-                                      }}
-                                    />
-                                  </TableCell>
-                                  <TableCell>
-                                    <Typography variant="body2" color="text.secondary">
-                                      {post.author}
-                                    </Typography>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      </CardContent>
-                    </Card>
+                      </Box>
+                    </Paper>
                   </Grid>
                 </Grid>
               </Box>
-            )}
-          </DialogContent>
-          <DialogActions sx={{ p: 2.5 }}>
-            <Button 
-              onClick={() => setSelectedHistory(null)} 
-              variant="contained"
-              sx={{
-                bgcolor: 'primary.main',
-                color: 'white',
-                px: 4,
-                '&:hover': {
-                  bgcolor: 'primary.dark',
-                },
-              }}
-            >
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Container>
+
+              {/* Posts Section */}
+              <Typography variant="h6" gutterBottom>Posts</Typography>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Title</TableCell>
+                      <TableCell>Subreddit</TableCell>
+                      <TableCell>Score</TableCell>
+                      <TableCell>Comments</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {selectedHistory.results.posts.map((post) => (
+                      <TableRow key={post.id}>
+                        <TableCell>{post.title}</TableCell>
+                        <TableCell>r/{post.subreddit}</TableCell>
+                        <TableCell>{post.score}</TableCell>
+                        <TableCell>{post.num_comments}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            href={post.permalink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            View on Reddit
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 } 
