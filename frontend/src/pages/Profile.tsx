@@ -75,10 +75,10 @@ export default function Profile() {
   const [selectedHistory, setSelectedHistory] = useState<SearchHistoryItem | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: searchHistory, isLoading, error } = useQuery<SearchHistoryItem[]>({
-    queryKey: ['searchHistory'],
+  const { data: searchHistory, isLoading, error } = useQuery({
+    queryKey: ['searchHistory'] as const,
     queryFn: async () => {
-      const response = await api.get('/api/auth/me/history');
+      const response = await api.get<SearchHistoryItem[]>('/api/auth/me/history');
       return response.data;
     },
   });
@@ -86,7 +86,7 @@ export default function Profile() {
   const handleDeleteHistory = async (id: number) => {
     try {
       await api.delete(`/api/auth/me/history/${id}`);
-      queryClient.invalidateQueries(['searchHistory']);
+      await queryClient.invalidateQueries({ queryKey: ['searchHistory'] as const });
     } catch (error) {
       console.error('Error deleting history item:', error);
     }
