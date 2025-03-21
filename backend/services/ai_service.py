@@ -61,7 +61,7 @@ async def analyze_posts(posts: List[Dict[str, Any]]) -> Dict[str, Any]:
         # Call OpenAI API
         logger.debug("Calling OpenAI API")
         response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are an AI trained to analyze Reddit posts and provide insights in JSON format."},
                 {"role": "user", "content": prompt}
